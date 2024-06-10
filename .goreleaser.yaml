@@ -1,0 +1,35 @@
+# goreleaser 配置
+# 参考 https://goreleaser.com
+
+version: 1
+
+builds:
+  - main: ./cmd/kubectl-cache
+    binary: kubectl-cache
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -X main.Version={{ .Version }}
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .Binary }}-
+      {{- .Version }}-
+      {{- .Os }}-
+      {{- .Arch }}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
