@@ -4,11 +4,14 @@ package options
 func NewDefaultOptions() Options {
 	return Options{
 		Global: NewDefaultGlobalOptions(),
+		Proxy:  NewDefaultProxyOptions(),
 	}
 }
 
 // Options pcrctl 运行选项
 type Options struct {
 	// 全局选项
-	Global GlobalOptions `json:"global,omitempty" yaml:"global,omitempty"`
+	Global GlobalOptions
+	// proxy 命令选项
+	Proxy ProxyOptions
 }

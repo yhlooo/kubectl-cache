@@ -9,7 +9,7 @@ import (
 	"github.com/yhlooo/kubectl-cache/pkg/utils/cmdutil"
 )
 
-// NewRootCommand 创建一个 pcrctl 命令
+// NewRootCommand 创建一个 kubectl-cache 命令
 func NewRootCommand() *cobra.Command {
 	return NewRootCommandWithOptions(options.NewDefaultOptions())
 }
@@ -27,6 +27,8 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 			}
 			// 设置日志
 			logger := cmdutil.SetLogger(cmd, opts.Global.Verbosity)
+			// 将全局选项设置到上下文
+			cmd.SetContext(options.NewContextWithGlobalOptions(cmd.Context(), opts.Global))
 
 			logger.V(1).Info(fmt.Sprintf("command: %q, args: %#v, options: %#v", cmd.Name(), args, opts))
 			return nil
@@ -40,7 +42,9 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 	opts.Global.AddPFlags(cmd.PersistentFlags())
 
 	// 添加子命令
-	cmd.AddCommand()
+	cmd.AddCommand(
+		NewProxyCommandWithOptions(&opts.Proxy),
+	)
 
 	return cmd
 }
