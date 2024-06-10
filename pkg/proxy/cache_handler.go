@@ -11,7 +11,11 @@ import (
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metascheme "k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -104,35 +108,24 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 	}
 
 	// 获取请求对应资源 Kind
-	kind, err := h.mapper.KindFor(gvr)
+	gvk, err := h.mapper.KindFor(gvr)
 	if err != nil {
 		return nil, fmt.Errorf("get kind for %s error: %w", gvr.String(), err)
 	}
 
 	switch info.Verb {
 	case "get":
-		ret := &unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": kind.GroupVersion().String(),
-				"kind":       kind.Kind,
-			},
+		opts, err := ParseGetOptions(req)
+		if err != nil {
+			return nil, fmt.Errorf("parse get options error: %w", err)
 		}
-		return ret, h.cache.Get(req.Context(), client.ObjectKey{
-			Namespace: info.Namespace,
-			Name:      info.Name,
-		}, ret)
+		return h.HandleGetUnstructured(req.Context(), gvk, info.Namespace, info.Name, opts)
 	case "list":
-		ret := &unstructured.UnstructuredList{
-			Object: map[string]interface{}{
-				"apiVersion": kind.GroupVersion().String(),
-				"kind":       kind.Kind + "List",
-			},
+		opts, err := ParseListOptions(req)
+		if err != nil {
+			return nil, fmt.Errorf("parse list options error: %w", err)
 		}
-		var listOpts []client.ListOption
-		if info.Namespace != "" {
-			listOpts = append(listOpts, client.InNamespace(info.Namespace))
-		}
-		return ret, h.cache.List(req.Context(), ret, listOpts...)
+		return h.HandleListUnstructured(req.Context(), gvk, info.Namespace, opts)
 	default:
 		return nil, apierrors.NewMethodNotSupported(gvr.GroupResource(), info.Verb)
 	}
@@ -161,6 +154,91 @@ func (h *CacheProxyHandler) IsCached(req *http.Request) bool {
 	// TODO: 检查部分参数
 
 	return true
+}
+
+// HandleGetUnstructured 处理获取无结构对象
+func (h *CacheProxyHandler) HandleGetUnstructured(
+	ctx context.Context,
+	gvk schema.GroupVersionKind,
+	namespace, name string,
+	opts metav1.GetOptions,
+) (runtime.Object, error) {
+	ret := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": gvk.GroupVersion().String(),
+			"kind":       gvk.Kind,
+		},
+	}
+
+	return ret, h.cache.Get(
+		ctx,
+		client.ObjectKey{Namespace: namespace, Name: name},
+		ret,
+		&client.GetOptions{Raw: &opts},
+	)
+}
+
+// HandleListUnstructured 处理列出无结构对象
+func (h *CacheProxyHandler) HandleListUnstructured(
+	ctx context.Context,
+	gvk schema.GroupVersionKind,
+	namespace string,
+	opts metav1.ListOptions,
+) (runtime.Object, error) {
+	ret := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": gvk.GroupVersion().String(),
+			"kind":       gvk.Kind + "List",
+		},
+	}
+
+	// 组装选项
+	listOpts := &client.ListOptions{
+		Namespace: namespace,
+		//Limit:     opts.Limit, // TODO: 暂不支持分页，传递该选项会导致返回结果不完整
+		//Continue:  opts.Continue,
+		Raw: &opts,
+	}
+	if opts.LabelSelector != "" {
+		selector, err := labels.Parse(opts.LabelSelector)
+		if err != nil {
+			return nil, fmt.Errorf("parse label selector error: %w", err)
+		}
+		listOpts.LabelSelector = selector
+	}
+	if opts.FieldSelector != "" {
+		selector, err := fields.ParseSelector(opts.FieldSelector)
+		if err != nil {
+			return nil, fmt.Errorf("parse field selector error: %w", err)
+		}
+		listOpts.FieldSelector = selector
+	}
+
+	return ret, h.cache.List(ctx, ret, listOpts)
+}
+
+// ParseGetOptions 解析请求 Get 选项
+func ParseGetOptions(req *http.Request) (metav1.GetOptions, error) {
+	ret := metav1.GetOptions{}
+	values := req.URL.Query()
+	if len(values) > 0 {
+		if err := metascheme.ParameterCodec.DecodeParameters(values, metav1.SchemeGroupVersion, &ret); err != nil {
+			return ret, err
+		}
+	}
+	return ret, nil
+}
+
+// ParseListOptions 解析请求 List 选项
+func ParseListOptions(req *http.Request) (metav1.ListOptions, error) {
+	ret := metav1.ListOptions{}
+	values := req.URL.Query()
+	if len(values) > 0 {
+		if err := metascheme.ParameterCodec.DecodeParameters(values, metav1.SchemeGroupVersion, &ret); err != nil {
+			return ret, err
+		}
+	}
+	return ret, nil
 }
 
 // WriteResponse 写响应
