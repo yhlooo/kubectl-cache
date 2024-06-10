@@ -50,6 +50,10 @@ remote Kubernetes API server port, except for the path matching the static conte
 			if err != nil {
 				return err
 			}
+			mapper, err := globalOpts.ClientConfig.ToRESTMapper()
+			if err != nil {
+				return err
+			}
 
 			// 处理过滤选项
 			var filter *kubectlproxy.FilterServer
@@ -79,8 +83,9 @@ remote Kubernetes API server port, except for the path matching the static conte
 			}
 
 			// 创建代理服务
-			s, err := proxy.NewServer(proxy.ServerOptions{
+			s, err := proxy.NewServer(ctx, proxy.ServerOptions{
 				ClientConfig: config,
+				RESTMapper:   mapper,
 				Listener:     listenerOpts,
 				APIProxy: proxy.APIProxyServerOptions{
 					URIPrefix:          opts.APIPrefix,

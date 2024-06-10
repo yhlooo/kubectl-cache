@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/proxy"
 	"k8s.io/kubectl/pkg/util"
@@ -17,6 +18,7 @@ import (
 // ServerOptions 代理服务选项
 type ServerOptions struct {
 	ClientConfig *rest.Config
+	RESTMapper   meta.RESTMapper
 
 	Listener ListenerOptions
 
@@ -56,11 +58,13 @@ type StaticServerOptions struct {
 }
 
 // NewServer 创建一个代理服务
-func NewServer(opts ServerOptions) (*Server, error) {
+func NewServer(ctx context.Context, opts ServerOptions) (*Server, error) {
 	handler, err := NewProxyHandler(
+		ctx,
 		opts.APIProxy.URIPrefix,
 		opts.APIProxy.Filter,
 		opts.ClientConfig,
+		opts.RESTMapper,
 		opts.APIProxy.Keepalive,
 		opts.APIProxy.AppendLocationPath,
 	)
