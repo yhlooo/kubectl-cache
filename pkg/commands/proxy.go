@@ -11,6 +11,7 @@ import (
 	"github.com/yhlooo/kubectl-cache/pkg/proxy"
 )
 
+// NewProxyCommandWithOptions 基于选项创建 proxy 子命令
 func NewProxyCommandWithOptions(opts *options.ProxyOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "proxy",

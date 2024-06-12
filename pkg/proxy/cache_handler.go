@@ -340,6 +340,7 @@ func ParseListOptions(req *http.Request) (metav1.ListOptions, error) {
 func ToPartial(obj runtime.Object) (runtime.Object, bool) {
 	switch typedObj := obj.(type) {
 	case metav1.ObjectMetaAccessor:
+		//goland:noinspection GoDeprecation
 		return &metav1.PartialObjectMetadata{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: metav1.SchemeGroupVersion.String(),
@@ -364,6 +365,7 @@ func ToPartial(obj runtime.Object) (runtime.Object, bool) {
 			},
 		}, true
 	case metav1.ListMetaAccessor:
+		//goland:noinspection GoDeprecation
 		return &metav1.PartialObjectMetadataList{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: metav1.SchemeGroupVersion.String(),
