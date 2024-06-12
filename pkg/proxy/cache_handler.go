@@ -45,9 +45,9 @@ func NewCacheProxyHandler(
 
 	syncPeriod := 10 * time.Minute
 	c, err := cache.New(config, cache.Options{
-		Scheme: scheme,
-		Mapper: mapper,
-		Resync: &syncPeriod,
+		Scheme:     scheme,
+		Mapper:     mapper,
+		SyncPeriod: &syncPeriod,
 	})
 	if err != nil {
 		return nil, err
