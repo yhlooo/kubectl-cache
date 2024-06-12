@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,7 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
+	registryrest "k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/rest"
+	"k8s.io/kubernetes/pkg/printers"
+	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
+	printerstorage "k8s.io/kubernetes/pkg/printers/storage"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -34,12 +39,15 @@ func NewCacheProxyHandler(
 	apiProxyPrefix string,
 ) (*CacheProxyHandler, error) {
 	logger := logr.FromContextOrDiscard(ctx)
+
 	scheme := runtime.NewScheme()
+	AddKubernetesTypesToScheme(scheme)
+
 	syncPeriod := 10 * time.Minute
 	c, err := cache.New(config, cache.Options{
-		Scheme:     scheme,
-		Mapper:     mapper,
-		SyncPeriod: &syncPeriod,
+		Scheme: scheme,
+		Mapper: mapper,
+		Resync: &syncPeriod,
 	})
 	if err != nil {
 		return nil, err
@@ -54,20 +62,26 @@ func NewCacheProxyHandler(
 	legacyAPIsPathPrefix := strings.Trim(strings.Trim(apiProxyPrefix, "/")+"/api", "/")
 
 	return &CacheProxyHandler{
+		scheme: scheme,
 		cache:  c,
 		mapper: mapper,
 		resolver: &apirequest.RequestInfoFactory{
 			APIPrefixes:          sets.NewString(apisPathPrefix, legacyAPIsPathPrefix),
 			GrouplessAPIPrefixes: sets.NewString(legacyAPIsPathPrefix),
 		},
+		tableConvertor: printerstorage.TableConvertor{
+			TableGenerator: printers.NewTableGenerator().With(printersinternal.AddHandlers),
+		},
 	}, nil
 }
 
 // CacheProxyHandler 缓存代理 HTTP 处理器
 type CacheProxyHandler struct {
-	cache    cache.Cache
-	mapper   meta.RESTMapper
-	resolver apirequest.RequestInfoResolver
+	scheme         *runtime.Scheme
+	cache          cache.Cache
+	mapper         meta.RESTMapper
+	resolver       apirequest.RequestInfoResolver
+	tableConvertor registryrest.TableConvertor
 }
 
 var _ http.Handler = &CacheProxyHandler{}
@@ -112,6 +126,20 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get kind for %s error: %w", gvr.String(), err)
 	}
+	if info.Verb == "list" {
+		gvk.Kind += "List"
+	}
+
+	ctx := req.Context()
+	logger := logr.FromContextOrDiscard(ctx)
+
+	// 创建返回对象
+	obj, err := h.scheme.New(gvk)
+	if err != nil {
+		// 无结构对象
+		obj = &unstructured.UnstructuredList{}
+	}
+	obj.GetObjectKind().SetGroupVersionKind(gvk)
 
 	switch info.Verb {
 	case "get":
@@ -119,16 +147,42 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse get options error: %w", err)
 		}
-		return h.HandleGetUnstructured(req.Context(), gvk, info.Namespace, info.Name, opts)
+		ret, ok := obj.(client.Object)
+		if !ok {
+			return nil, fmt.Errorf("%T is not a client.Object", ret)
+		}
+		if err := h.HandleGet(ctx, ret, info.Namespace, info.Name, opts); err != nil {
+			return nil, err
+		}
 	case "list":
 		opts, err := ParseListOptions(req)
 		if err != nil {
 			return nil, fmt.Errorf("parse list options error: %w", err)
 		}
-		return h.HandleListUnstructured(req.Context(), gvk, info.Namespace, opts)
+		ret, ok := obj.(client.ObjectList)
+		if !ok {
+			return nil, fmt.Errorf("%T is not a client.ObjectList", ret)
+		}
+		if err := h.HandleList(ctx, ret, info.Namespace, opts); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, apierrors.NewMethodNotSupported(gvr.GroupResource(), info.Verb)
 	}
+
+	// 转为列表
+	accept := strings.Split(req.Header.Get("Accept"), ",")
+	if !slices.Contains(accept, "application/json;as=Table;v=v1;g=meta.k8s.io") || h.tableConvertor == nil {
+		// 不支持服务端表格，返回普通 json 格式
+		return obj, nil
+	}
+	table, err := ConvertToTable(ctx, h.scheme, gvk, h.tableConvertor, obj)
+	if err != nil {
+		logger.V(1).Info(fmt.Sprintf("convert to table error: %v", err))
+		return obj, nil
+	}
+
+	return table, nil
 }
 
 // IsCached 判断该请求是否有缓存
@@ -139,6 +193,10 @@ func (h *CacheProxyHandler) IsCached(req *http.Request) bool {
 		return false
 	}
 
+	// 没有具体资源的不缓存
+	if info.Resource == "" {
+		return false
+	}
 	// 除 status 以外的子资源都不缓存
 	if info.Subresource != "" && info.Subresource != "status" {
 		return false
@@ -156,42 +214,28 @@ func (h *CacheProxyHandler) IsCached(req *http.Request) bool {
 	return true
 }
 
-// HandleGetUnstructured 处理获取无结构对象
-func (h *CacheProxyHandler) HandleGetUnstructured(
+// HandleGet 处理获取对象
+func (h *CacheProxyHandler) HandleGet(
 	ctx context.Context,
-	gvk schema.GroupVersionKind,
+	obj client.Object,
 	namespace, name string,
 	opts metav1.GetOptions,
-) (runtime.Object, error) {
-	ret := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": gvk.GroupVersion().String(),
-			"kind":       gvk.Kind,
-		},
-	}
-
-	return ret, h.cache.Get(
+) error {
+	return h.cache.Get(
 		ctx,
 		client.ObjectKey{Namespace: namespace, Name: name},
-		ret,
+		obj,
 		&client.GetOptions{Raw: &opts},
 	)
 }
 
-// HandleListUnstructured 处理列出无结构对象
-func (h *CacheProxyHandler) HandleListUnstructured(
+// HandleList 处理列出对象
+func (h *CacheProxyHandler) HandleList(
 	ctx context.Context,
-	gvk schema.GroupVersionKind,
+	obj client.ObjectList,
 	namespace string,
 	opts metav1.ListOptions,
-) (runtime.Object, error) {
-	ret := &unstructured.UnstructuredList{
-		Object: map[string]interface{}{
-			"apiVersion": gvk.GroupVersion().String(),
-			"kind":       gvk.Kind + "List",
-		},
-	}
-
+) error {
 	// 组装选项
 	listOpts := &client.ListOptions{
 		Namespace: namespace,
@@ -202,19 +246,70 @@ func (h *CacheProxyHandler) HandleListUnstructured(
 	if opts.LabelSelector != "" {
 		selector, err := labels.Parse(opts.LabelSelector)
 		if err != nil {
-			return nil, fmt.Errorf("parse label selector error: %w", err)
+			return fmt.Errorf("parse label selector error: %w", err)
 		}
 		listOpts.LabelSelector = selector
 	}
 	if opts.FieldSelector != "" {
 		selector, err := fields.ParseSelector(opts.FieldSelector)
 		if err != nil {
-			return nil, fmt.Errorf("parse field selector error: %w", err)
+			return fmt.Errorf("parse field selector error: %w", err)
 		}
 		listOpts.FieldSelector = selector
 	}
 
-	return ret, h.cache.List(ctx, ret, listOpts)
+	return h.cache.List(ctx, obj, listOpts)
+}
+
+// ConvertToTable 将 obj 转换为表格形式
+func ConvertToTable(
+	ctx context.Context,
+	scheme *runtime.Scheme,
+	gvk schema.GroupVersionKind,
+	tableConvertor registryrest.TableConvertor,
+	obj runtime.Object,
+) (*metav1.Table, error) {
+	// 转换为 __internal 版本
+	internalObj, err := scheme.New(gvk.GroupKind().WithVersion(runtime.APIVersionInternal))
+	if err != nil {
+		return nil, fmt.Errorf("new internal object for %T error: %w", obj, err)
+	}
+	if err := scheme.Convert(obj, internalObj, nil); err != nil {
+		return nil, fmt.Errorf("convert %T to internal version error: %w", obj, err)
+	}
+
+	// 转换为表格
+	table, err := tableConvertor.ConvertToTable(ctx, internalObj, nil)
+	if err != nil {
+		return nil, err
+	}
+	table.GetObjectKind().SetGroupVersionKind(metav1.SchemeGroupVersion.WithKind("Table"))
+
+	// 将每行 Object 转为 PartialObjectMetadata 或 PartialObjectMetadataList
+	for i, row := range table.Rows {
+		if row.Object.Object == nil || row.Object.Raw != nil {
+			continue
+		}
+		partial, ok := ToPartial(row.Object.Object)
+		if !ok {
+			continue
+		}
+		table.Rows[i].Object.Object = partial
+	}
+
+	return table, nil
+}
+
+// WriteResponse 写响应
+func WriteResponse(w http.ResponseWriter, code int, obj interface{}) {
+	raw, err := json.Marshal(obj)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, _ = w.Write(raw)
 }
 
 // ParseGetOptions 解析请求 Get 选项
@@ -241,15 +336,46 @@ func ParseListOptions(req *http.Request) (metav1.ListOptions, error) {
 	return ret, nil
 }
 
-// WriteResponse 写响应
-func WriteResponse(w http.ResponseWriter, code int, obj interface{}) {
-	raw, err := json.Marshal(obj)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+// ToPartial 从对象提取仅包含 metadata 的部分
+func ToPartial(obj runtime.Object) (runtime.Object, bool) {
+	switch typedObj := obj.(type) {
+	case metav1.ObjectMetaAccessor:
+		return &metav1.PartialObjectMetadata{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: metav1.SchemeGroupVersion.String(),
+				Kind:       "PartialObjectMetadata",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:                       typedObj.GetObjectMeta().GetName(),
+				GenerateName:               typedObj.GetObjectMeta().GetGenerateName(),
+				Namespace:                  typedObj.GetObjectMeta().GetNamespace(),
+				SelfLink:                   typedObj.GetObjectMeta().GetSelfLink(),
+				UID:                        typedObj.GetObjectMeta().GetUID(),
+				ResourceVersion:            typedObj.GetObjectMeta().GetResourceVersion(),
+				Generation:                 typedObj.GetObjectMeta().GetGeneration(),
+				CreationTimestamp:          typedObj.GetObjectMeta().GetCreationTimestamp(),
+				DeletionTimestamp:          typedObj.GetObjectMeta().GetDeletionTimestamp(),
+				DeletionGracePeriodSeconds: typedObj.GetObjectMeta().GetDeletionGracePeriodSeconds(),
+				Labels:                     typedObj.GetObjectMeta().GetLabels(),
+				Annotations:                typedObj.GetObjectMeta().GetAnnotations(),
+				OwnerReferences:            typedObj.GetObjectMeta().GetOwnerReferences(),
+				Finalizers:                 typedObj.GetObjectMeta().GetFinalizers(),
+				ManagedFields:              typedObj.GetObjectMeta().GetManagedFields(),
+			},
+		}, true
+	case metav1.ListMetaAccessor:
+		return &metav1.PartialObjectMetadataList{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: metav1.SchemeGroupVersion.String(),
+				Kind:       "PartialObjectMetadataList",
+			},
+			ListMeta: metav1.ListMeta{
+				SelfLink:           typedObj.GetListMeta().GetSelfLink(),
+				ResourceVersion:    typedObj.GetListMeta().GetResourceVersion(),
+				Continue:           typedObj.GetListMeta().GetContinue(),
+				RemainingItemCount: typedObj.GetListMeta().GetRemainingItemCount(),
+			},
+		}, true
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, _ = w.Write(raw)
+	return nil, false
 }
