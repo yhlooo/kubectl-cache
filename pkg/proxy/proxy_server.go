@@ -93,6 +93,7 @@ func NewServer(ctx context.Context, opts ServerOptions) (*Server, error) {
 
 	return &Server{
 		handler: mux,
+		readyCh: make(chan struct{}),
 		listen:  listen,
 	}, nil
 }
@@ -101,6 +102,8 @@ func NewServer(ctx context.Context, opts ServerOptions) (*Server, error) {
 type Server struct {
 	server  *http.Server
 	handler http.Handler
+
+	readyCh chan struct{}
 
 	listen   ListenFunc
 	listener net.Listener
@@ -135,6 +138,7 @@ func (s *Server) Serve(ctx context.Context) error {
 	}()
 
 	// 开始 HTTP 服务
+	close(s.readyCh)
 	serveErr := s.server.Serve(s.listener)
 	if ctxErr != nil {
 		return ctxErr
@@ -148,6 +152,11 @@ func (s *Server) Stop(ctx context.Context) error {
 		return nil
 	}
 	return s.server.Shutdown(ctx)
+}
+
+// Ready 返回一个通道，该通道在服务端就绪时会被关闭
+func (s *Server) Ready() <-chan struct{} {
+	return s.readyCh
 }
 
 // Addr 返回监听地址

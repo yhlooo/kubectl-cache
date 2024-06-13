@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// NewDefaultProxyOptions 创建一个默认的 proxy 命令选项
+// NewDefaultProxyOptions 创建一个默认的 proxy 子命令选项
 func NewDefaultProxyOptions() ProxyOptions {
 	return ProxyOptions{
 		Address:    "127.0.0.1",
@@ -27,7 +27,7 @@ func NewDefaultProxyOptions() ProxyOptions {
 	}
 }
 
-// ProxyOptions proxy 命令选项
+// ProxyOptions proxy 子命令选项
 type ProxyOptions struct {
 	// 监听地址
 	Address string

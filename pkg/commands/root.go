@@ -44,6 +44,7 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 	// 添加子命令
 	cmd.AddCommand(
 		NewProxyCommandWithOptions(&opts.Proxy),
+		NewInternalProxyCommandWithOptions(&opts.InternalProxyOptions),
 	)
 
 	return cmd
