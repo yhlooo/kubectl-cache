@@ -117,6 +117,7 @@ func (s *Server) Serve(ctx context.Context) error {
 	var err error
 	s.listener, err = s.listen()
 	if err != nil {
+		close(s.readyCh)
 		return err
 	}
 	logger.V(1).Info(fmt.Sprintf("serve on %q", s.listener.Addr()))
@@ -132,7 +133,7 @@ func (s *Server) Serve(ctx context.Context) error {
 		<-ctx.Done()
 		ctxErr = ctx.Err()
 		logger.V(1).Info("context done, shutting down server ...")
-		if err := s.server.Shutdown(ctx); err != nil {
+		if err := s.server.Shutdown(logr.NewContext(context.Background(), logger)); err != nil {
 			logger.Error(err, "shutdown error")
 		}
 	}()
