@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	kubectlcmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/yhlooo/kubectl-cache/pkg/commands/options"
 	"github.com/yhlooo/kubectl-cache/pkg/utils/cmdutil"
@@ -41,10 +42,14 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 	// 绑定选项到命令行参数
 	opts.Global.AddPFlags(cmd.PersistentFlags())
 
+	// kubectl 命令工厂
+	f := kubectlcmdutil.NewFactory(opts.Global.ClientConfig)
+
 	// 添加子命令
 	cmd.AddCommand(
 		NewProxyCommandWithOptions(&opts.Proxy),
 		NewInternalProxyCommandWithOptions(&opts.InternalProxyOptions),
+		NewGetCommand(f),
 	)
 
 	return cmd
