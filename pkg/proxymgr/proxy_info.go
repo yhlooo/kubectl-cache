@@ -1,5 +1,11 @@
 package proxymgr
 
+import (
+	"fmt"
+
+	"k8s.io/client-go/rest"
+)
+
 // ProxyInfo 代理信息
 type ProxyInfo struct {
 	pid  int
@@ -32,4 +38,14 @@ func (info *ProxyInfo) DataRoot() string {
 // ClientConfigSignature 代理服务的客户端配置签名
 func (info *ProxyInfo) ClientConfigSignature() string {
 	return info.clientConfigSignature
+}
+
+// ToClientConfig 返回使用该代理的客户端配置
+func (info *ProxyInfo) ToClientConfig() *rest.Config {
+	return &rest.Config{
+		Host: fmt.Sprintf("http://127.0.0.1:%d", info.port),
+		TLSClientConfig: rest.TLSClientConfig{
+			Insecure: true,
+		},
+	}
 }
