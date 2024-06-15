@@ -121,6 +121,7 @@ func (mgr *defaultProxyManager) NewForConfig(ctx context.Context, config *rest.C
 		if err != nil {
 			if time.Since(lastLogTime) >= time.Second {
 				logger.V(1).Info(fmt.Sprintf("waiting for proxy ready ... (%s)", err))
+				lastLogTime = time.Now()
 			}
 			continue
 		}
