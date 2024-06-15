@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -104,7 +106,10 @@ remote Kubernetes API server port, except for the path matching the static conte
 			}
 
 			// 启动代理服务
-			return s.Serve(ctx)
+			if err := s.Serve(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				return err
+			}
+			return nil
 		},
 	}
 

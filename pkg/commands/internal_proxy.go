@@ -40,12 +40,12 @@ func NewInternalProxyCommandWithOptions(opts *options.InternalProxyOptions) *cob
 			mgr := proxymgr.NewProxyManager(globalOpts.DataRoot, nil)
 
 			// 锁
-			info, err := mgr.LockProxyInfo(ctx, config)
+			proxyObj, err := mgr.LockProxy(ctx, config)
 			if err != nil {
 				return fmt.Errorf("get lock for client config error: %w", err)
 			}
 			defer func() {
-				if err := mgr.UnlockProxyInfo(ctx, info); err != nil {
+				if err := mgr.UnlockProxy(ctx, proxyObj); err != nil {
 					logger.Error(err, "unlock client config error")
 				}
 			}()
@@ -96,8 +96,8 @@ func NewInternalProxyCommandWithOptions(opts *options.InternalProxyOptions) *cob
 			if err != nil {
 				return fmt.Errorf("invalid address: %s", addr)
 			}
-			info.SetTCPPort(int(port))
-			if err := mgr.SetProxyInfo(ctx, info); err != nil {
+			proxyObj.Status.Port = int(port)
+			if err := mgr.SetProxy(ctx, proxyObj); err != nil {
 				return fmt.Errorf("set proxy info error: %w", err)
 			}
 

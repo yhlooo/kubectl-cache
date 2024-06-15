@@ -31,7 +31,6 @@ func GetConfigSignature(config *rest.Config) string {
 		"GroupVersion":       config.GroupVersion,
 	})
 	sum := sha256.Sum256(raw)
-
-	// NOTE: 只取前 32 位（ 8 个 16 进制字符）是因为 UNIX Socket 地址长度不能超过 108 字节（ linux ）或 104 字节（ darwin ）
+	// NOTE: 只取前 4 个字节（ 8 个十六进制符号）是因为 UNIX Socket 地址长度不能超过 108 字节（ linux ）或 104 字节（ darwin ）
 	return hex.EncodeToString(sum[:4])
 }

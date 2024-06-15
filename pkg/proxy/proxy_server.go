@@ -140,6 +140,7 @@ func (s *Server) Serve(ctx context.Context) error {
 
 	// 开始 HTTP 服务
 	close(s.readyCh)
+	logger.Info(fmt.Sprintf("Starting to serve on %s", s.listener.Addr()))
 	serveErr := s.server.Serve(s.listener)
 	if ctxErr != nil {
 		return ctxErr

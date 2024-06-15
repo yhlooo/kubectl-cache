@@ -12,7 +12,7 @@ func Notify(parent context.Context, signals ...os.Signal) (context.Context, cont
 	ctx, cancel := context.WithCancel(parent)
 
 	// 绑定信号通知
-	ch := make(chan os.Signal, 5)
+	ch := make(chan os.Signal)
 	signal.Notify(ch, signals...)
 
 	if ctx.Err() == nil {
@@ -21,12 +21,12 @@ func Notify(parent context.Context, signals ...os.Signal) (context.Context, cont
 			// 第一次收到信号取消上下文
 			select {
 			case <-ctx.Done():
+				return
 			case <-ch:
 				cancel()
 			}
 			// 第二次直接退出
 			select {
-			case <-ctx.Done():
 			case s, ok := <-ch:
 				if !ok || s == nil {
 					os.Exit(1)

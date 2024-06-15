@@ -5,6 +5,7 @@ func NewDefaultOptions() Options {
 	return Options{
 		Global:               NewDefaultGlobalOptions(),
 		Proxy:                NewDefaultProxyOptions(),
+		Proxies:              NewDefaultProxiesOptions(),
 		InternalProxyOptions: NewDefaultInternalProxyOptions(),
 	}
 }
@@ -13,8 +14,10 @@ func NewDefaultOptions() Options {
 type Options struct {
 	// 全局选项
 	Global GlobalOptions
-	// proxy 命令选项
+	// proxy 子命令选项
 	Proxy ProxyOptions
+	// proxies 子命令选项
+	Proxies ProxiesOptions
 
 	// internal-proxy 子命令选项
 	InternalProxyOptions InternalProxyOptions

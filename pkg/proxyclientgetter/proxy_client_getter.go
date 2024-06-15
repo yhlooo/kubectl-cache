@@ -42,16 +42,16 @@ func (getter *ProxyClientGetter) ToRESTConfig() (*rest.Config, error) {
 	}
 
 	// 尝试获取正在运行的代理
-	info, err := getter.ProxyManager.GetForConfig(ctx, config)
-	if err != nil {
+	proxy, err := getter.ProxyManager.GetForConfig(ctx, config)
+	if err != nil || proxy.Status.State != proxymgr.ProxyReady {
 		// 没有的话新启动一个
-		info, err = getter.ProxyManager.NewForConfig(ctx, config)
+		proxy, err = getter.ProxyManager.NewForConfig(ctx, config)
 		if err != nil {
 			logger.Info(fmt.Sprintf("WARNING start cache proxy error, use passthrough mode, error: %v", err))
 			return config, nil
 		}
 	}
 
-	logger.Info(fmt.Sprintf("using proxy http://127.0.0.1:%d", info.TCPPort()))
-	return info.ToClientConfig(), nil
+	logger.Info(fmt.Sprintf("using proxy http://127.0.0.1:%d", proxy.Status.Port))
+	return proxy.ToClientConfig(), nil
 }
