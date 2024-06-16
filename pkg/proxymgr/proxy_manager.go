@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -66,12 +65,7 @@ func (mgr *defaultProxyManager) List(ctx context.Context) (*ProxyList, error) {
 		return nil, fmt.Errorf("list proxy directories in %q error: %w", proxiesDirPath, err)
 	}
 
-	ret := &ProxyList{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "List",
-		},
-	}
+	ret := NewProxyList()
 	for _, dir := range proxyDirs {
 		if !dir.IsDir() {
 			continue
@@ -90,23 +84,16 @@ func (mgr *defaultProxyManager) List(ctx context.Context) (*ProxyList, error) {
 
 // Get 获取指定代理信息
 func (mgr *defaultProxyManager) Get(_ context.Context, name string) (*Proxy, error) {
-	proxy := &Proxy{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Proxy",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Status: ProxyStatus{
-			DataRoot:              filepath.Join(mgr.dataRoot, rootSubPath, name),
-			ClientConfigSignature: name,
-		},
+	proxy := NewProxy()
+	proxy.ObjectMeta.Name = name
+	proxy.Status = ProxyStatus{
+		DataRoot:              filepath.Join(mgr.dataRoot, rootSubPath, name),
+		ClientConfigSignature: name,
 	}
 
 	// 读 pid 文件
 	var err error
-	proxy.Status.PID, err = mgr.getPID(proxy.Status.DataRoot)
+	proxy.Status.PID, proxy.ObjectMeta.CreationTimestamp.Time, err = mgr.getPID(proxy.Status.DataRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -180,14 +167,13 @@ func (mgr *defaultProxyManager) NewForConfig(ctx context.Context, config *rest.C
 
 // LockProxy 当前进程认领并锁定客户端配置对应的代理（避免其它进程基于此客户端配置启动代理）
 func (mgr *defaultProxyManager) LockProxy(_ context.Context, config *rest.Config) (*Proxy, error) {
-	proxy := &Proxy{
-		Status: ProxyStatus{
-			State:                 "",
-			PID:                   os.Getpid(),
-			Port:                  0,
-			DataRoot:              "",
-			ClientConfigSignature: GetConfigSignature(config),
-		},
+	proxy := NewProxy()
+	proxy.Status = ProxyStatus{
+		State:                 "",
+		PID:                   os.Getpid(),
+		Port:                  0,
+		DataRoot:              "",
+		ClientConfigSignature: GetConfigSignature(config),
 	}
 
 	// 创建数据目录
@@ -259,20 +245,24 @@ func (mgr *defaultProxyManager) SetProxy(_ context.Context, proxy *Proxy) error 
 }
 
 // getPID 获取代理服务进程 ID
-func (mgr *defaultProxyManager) getPID(proxyDataRoot string) (int, error) {
+func (mgr *defaultProxyManager) getPID(proxyDataRoot string) (int, time.Time, error) {
 	pidFilePath := filepath.Join(proxyDataRoot, pidFileSubPath)
-	pidStr, err := os.ReadFile(pidFilePath)
+	pidFileState, err := os.Stat(pidFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, fmt.Errorf("proxy pid file does not exist")
+			return 0, time.Time{}, fmt.Errorf("proxy pid file does not exist")
 		}
-		return 0, fmt.Errorf("read proxy pid file %q error: %w", pidFilePath, err)
+		return 0, time.Time{}, fmt.Errorf("get proxy pid file state %q error: %w", pidFilePath, err)
+	}
+	pidStr, err := os.ReadFile(pidFilePath)
+	if err != nil {
+		return 0, pidFileState.ModTime(), fmt.Errorf("read proxy pid file %q error: %w", pidFilePath, err)
 	}
 	pid, err := strconv.Atoi(string(pidStr))
 	if err != nil {
-		return 0, fmt.Errorf("invalid proxy pid %q: %w", string(pidStr), err)
+		return 0, pidFileState.ModTime(), fmt.Errorf("invalid proxy pid %q: %w", string(pidStr), err)
 	}
-	return pid, nil
+	return pid, pidFileState.ModTime(), nil
 }
 
 // getPort 获取代理服务监听端口

@@ -3,10 +3,22 @@ package proxymgr
 import (
 	"fmt"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 )
+
+// NewProxy 创建一个 Proxy
+func NewProxy() *Proxy {
+	return &Proxy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Proxy",
+		},
+	}
+}
 
 // Proxy 缓存代理
 type Proxy struct {
@@ -57,6 +69,16 @@ func (proxy *Proxy) ToClientConfig() *rest.Config {
 	}
 }
 
+// NewProxyList 创建一个 ProxyList
+func NewProxyList() *ProxyList {
+	return &ProxyList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "List",
+		},
+	}
+}
+
 // ProxyList 缓存代理列表
 type ProxyList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -93,3 +115,22 @@ func (list *ProxyList) DeepCopyObject() runtime.Object {
 	}
 	return ret
 }
+
+// ProxyTableConvertor Proxy 表格转换器
+var ProxyTableConvertor, _ = tableconvertor.New([]apiextensionsv1.CustomResourceColumnDefinition{{
+	Name:     "Port",
+	Type:     "integer",
+	JSONPath: ".status.port",
+}, {
+	Name:     "PID",
+	Type:     "integer",
+	JSONPath: ".status.pid",
+}, {
+	Name:     "State",
+	Type:     "string",
+	JSONPath: ".status.state",
+}, {
+	Name:     "Age",
+	Type:     "date",
+	JSONPath: ".metadata.creationTimestamp",
+}})
