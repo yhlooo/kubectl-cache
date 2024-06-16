@@ -14,7 +14,7 @@ func NewRootCommand() *cobra.Command {
 	return NewRootCommandWithOptions(options.NewDefaultOptions())
 }
 
-// NewRootCommandWithOptions  基于选项创建一个 kubectl-cache 命令
+// NewRootCommandWithOptions 基于选项创建一个 kubectl-cache 命令
 func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "kubectl-cache",
@@ -46,6 +46,7 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 		NewGetCommand(opts.Global.ClientConfig),
 		NewProxyCommandWithOptions(&opts.Proxy),
 		NewProxiesCommandWithOptions(&opts.Proxies),
+		NewShutdownCommandWithOptions(&opts.Shutdown),
 		NewInternalProxyCommandWithOptions(&opts.InternalProxyOptions),
 	)
 

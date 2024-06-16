@@ -15,7 +15,7 @@ import (
 	"github.com/yhlooo/kubectl-cache/pkg/proxymgr"
 )
 
-// NewInternalProxyCommandWithOptions 基于选项创建一个 internal-proxy 子命令
+// NewInternalProxyCommandWithOptions 基于选项创建 internal-proxy 子命令
 // 该命令和 proxy 子命令作用基本一样，只不过专用于实现内部逻辑（比如 get 命令）
 func NewInternalProxyCommandWithOptions(opts *options.InternalProxyOptions) *cobra.Command {
 	cmd := &cobra.Command{

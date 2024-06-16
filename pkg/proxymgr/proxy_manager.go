@@ -2,11 +2,13 @@ package proxymgr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -31,6 +33,8 @@ type ProxyManager interface {
 	// SetProxy 设置客户端配置对应的代理信息
 	// NOTE: 仅能设置当前进程提供的代理服务信息，需要先 LockConfig
 	SetProxy(ctx context.Context, proxy *Proxy) error
+	// KillProxy 停止指定代理服务
+	KillProxy(ctx context.Context, proxy *Proxy, wait, force bool) error
 }
 
 // NewProxyManager 创建一个代理服务管理器
@@ -218,8 +222,11 @@ func (mgr *defaultProxyManager) UnlockProxy(_ context.Context, proxy *Proxy) err
 	}
 	_ = pidFile.Close()
 	// 删除所有数据文件
-	if err := os.RemoveAll(proxy.Status.DataRoot); err != nil {
-		return fmt.Errorf("remove proxy data directory %q error: %w", proxy.Status.DataRoot, err)
+	if proxy.Status.DataRoot != "" && proxy.Status.ClientConfigSignature != "" &&
+		filepath.Join(mgr.dataRoot, rootSubPath, proxy.Status.ClientConfigSignature) == proxy.Status.DataRoot {
+		if err := os.RemoveAll(proxy.Status.DataRoot); err != nil {
+			return fmt.Errorf("remove proxy data directory %q error: %w", proxy.Status.DataRoot, err)
+		}
 	}
 	return nil
 }
@@ -244,13 +251,74 @@ func (mgr *defaultProxyManager) SetProxy(_ context.Context, proxy *Proxy) error 
 	return nil
 }
 
+// KillProxy 停止指定代理服务
+func (mgr *defaultProxyManager) KillProxy(ctx context.Context, proxy *Proxy, wait, force bool) error {
+	logger := logr.FromContextOrDiscard(ctx)
+
+	// 获取代理进程
+	if proxy.Status.PID == 0 {
+		return fmt.Errorf("no proxy process pid")
+	}
+	proc, err := os.FindProcess(proxy.Status.PID)
+	if err != nil {
+		return fmt.Errorf("get proxy process %d error: %w", proxy.Status.PID, err)
+	}
+
+	if force {
+		// 杀进程
+		if err := proc.Kill(); err != nil {
+			return fmt.Errorf("kill proxy process %d error: %w", proxy.Status.PID, err)
+		}
+		// 删除所有相关数据文件
+		if proxy.Status.DataRoot != "" && proxy.Status.ClientConfigSignature != "" &&
+			filepath.Join(mgr.dataRoot, rootSubPath, proxy.Status.ClientConfigSignature) == proxy.Status.DataRoot {
+			if err := os.RemoveAll(proxy.Status.DataRoot); err != nil {
+				return fmt.Errorf("remove data directory %q for proxy error: %w", proxy.Status.DataRoot, err)
+			}
+		}
+		return nil
+	}
+
+	// 发送 TERM 信号
+	if err := proc.Signal(syscall.SIGTERM); err != nil {
+		return fmt.Errorf("send signal TERM to proxy process %d error: %w", proxy.Status.PID, err)
+	}
+
+	if !wait {
+		return nil
+	}
+
+	// 等待进程退出
+	lastLogTime := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for proxy process %d exit error: %w", proxy.Status.PID, ctx.Err())
+		case <-time.After(500 * time.Millisecond):
+		}
+
+		proxy, err := mgr.Get(ctx, proxy.Name)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+			return fmt.Errorf("wait for proxy process %d exit error: %w", proxy.Status.PID, err)
+		}
+
+		if time.Since(lastLogTime) >= 3*time.Second {
+			logger.V(1).Info(fmt.Sprintf("waiting for proxy exit ... (state: %s)", proxy.Status.State))
+			lastLogTime = time.Now()
+		}
+	}
+}
+
 // getPID 获取代理服务进程 ID
 func (mgr *defaultProxyManager) getPID(proxyDataRoot string) (int, time.Time, error) {
 	pidFilePath := filepath.Join(proxyDataRoot, pidFileSubPath)
 	pidFileState, err := os.Stat(pidFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, time.Time{}, fmt.Errorf("proxy pid file does not exist")
+			return 0, time.Time{}, fmt.Errorf("proxy pid file does not exist: %w", err)
 		}
 		return 0, time.Time{}, fmt.Errorf("get proxy pid file state %q error: %w", pidFilePath, err)
 	}

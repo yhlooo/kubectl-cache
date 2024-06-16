@@ -13,11 +13,11 @@ import (
 	"github.com/yhlooo/kubectl-cache/pkg/proxymgr"
 )
 
-// NewProxiesCommandWithOptions 基于选项创建一个 proxies 子命令
+// NewProxiesCommandWithOptions 基于选项创建 proxies 子命令
 func NewProxiesCommandWithOptions(opts *options.ProxiesOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "proxies",
-		Short: "List cache proxies",
+		Use:   "proxies [NAME]",
+		Short: "Display one or many proxies",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// 校验选项
 			if err := opts.Validate(); err != nil {
