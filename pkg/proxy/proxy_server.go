@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -17,13 +18,21 @@ import (
 
 // ServerOptions 代理服务选项
 type ServerOptions struct {
+	// Kubernetes 客户端配置
 	ClientConfig *rest.Config
-	RESTMapper   meta.RESTMapper
+	// Kubernetes API 映射器
+	RESTMapper meta.RESTMapper
 
+	// 监听选项
 	Listener ListenerOptions
 
+	// Kubernetes API 代理
 	APIProxy APIProxyServerOptions
-	Static   StaticServerOptions
+	// 静态文件服务
+	Static StaticServerOptions
+
+	// 最大空闲时间（超过后代理服务自行关闭）
+	MaxIdleTime time.Duration
 }
 
 // ListenerOptions 监听器选项
@@ -59,6 +68,11 @@ type StaticServerOptions struct {
 
 // NewServer 创建一个代理服务
 func NewServer(ctx context.Context, opts ServerOptions) (*Server, error) {
+	s := &Server{
+		readyCh:     make(chan struct{}),
+		maxIdleTime: opts.MaxIdleTime,
+	}
+
 	handler, err := NewProxyHandler(
 		ctx,
 		opts.APIProxy.URIPrefix,
@@ -67,6 +81,7 @@ func NewServer(ctx context.Context, opts ServerOptions) (*Server, error) {
 		opts.RESTMapper,
 		opts.APIProxy.Keepalive,
 		opts.APIProxy.AppendLocationPath,
+		s.Notify,
 	)
 	if err != nil {
 		return nil, err
@@ -80,6 +95,7 @@ func NewServer(ctx context.Context, opts ServerOptions) (*Server, error) {
 			http.StripPrefix(opts.Static.URIPrefix, http.FileServer(http.Dir(opts.Static.FileBase))),
 		)
 	}
+	s.handler = mux
 
 	var listen ListenFunc
 	switch {
@@ -90,12 +106,9 @@ func NewServer(ctx context.Context, opts ServerOptions) (*Server, error) {
 	default:
 		return nil, fmt.Errorf("one of opts.Listener.TCP and opts.Listener.UNIXSocket must be specified")
 	}
+	s.listen = listen
 
-	return &Server{
-		handler: mux,
-		readyCh: make(chan struct{}),
-		listen:  listen,
-	}, nil
+	return s, nil
 }
 
 // Server 代理服务
@@ -107,6 +120,10 @@ type Server struct {
 
 	listen   ListenFunc
 	listener net.Listener
+
+	idleTimerLock sync.Mutex
+	idleTimer     *time.Timer
+	maxIdleTime   time.Duration
 }
 
 // Serve 开始提供 HTTP 服务
@@ -138,6 +155,21 @@ func (s *Server) Serve(ctx context.Context) error {
 		}
 	}()
 
+	// 设置空闲停止倒计时
+	if s.maxIdleTime > 0 {
+		s.idleTimer = time.NewTimer(s.maxIdleTime)
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-s.idleTimer.C:
+				logger.Info("idle timeout, shutting down server ...")
+				if err := s.server.Shutdown(ctx); err != nil {
+					logger.Error(err, "shutdown error")
+				}
+			}
+		}()
+	}
+
 	// 开始 HTTP 服务
 	close(s.readyCh)
 	logger.Info(fmt.Sprintf("Starting to serve on %s", s.listener.Addr()))
@@ -167,6 +199,18 @@ func (s *Server) Addr() net.Addr {
 		return nil
 	}
 	return s.listener.Addr()
+}
+
+// Notify 通知收到了一个请求
+func (s *Server) Notify(_ *http.Request) {
+	if s.maxIdleTime == 0 {
+		return
+	}
+
+	// 重置计时器
+	s.idleTimerLock.Lock()
+	defer s.idleTimerLock.Unlock()
+	s.idleTimer.Reset(s.maxIdleTime)
 }
 
 // ListenFunc 开始监听方法

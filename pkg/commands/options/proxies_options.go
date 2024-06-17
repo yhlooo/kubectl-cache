@@ -31,5 +31,5 @@ func (opts *ProxiesOptions) Validate() error {
 
 // AddPFlags 将选项绑定到命令行
 func (opts *ProxiesOptions) AddPFlags(flags *pflag.FlagSet) {
-	flags.StringVarP(&opts.OutputFormat, "output", "o", opts.OutputFormat, "Output format. One of: (json, yaml)")
+	flags.StringVarP(&opts.OutputFormat, "output", "o", opts.OutputFormat, "Output format. One of: (json, yaml).")
 }

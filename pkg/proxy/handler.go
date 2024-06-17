@@ -21,6 +21,7 @@ func NewProxyHandler(
 	mapper meta.RESTMapper,
 	keepalive time.Duration,
 	appendLocationPath bool,
+	notify func(*http.Request),
 ) (http.Handler, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 
@@ -40,6 +41,7 @@ func NewProxyHandler(
 		Handler: passthrough,
 		logger:  logger,
 		cache:   cache, // 缓存 handler
+		notify:  notify,
 	})
 
 	// 添加过滤器
@@ -58,6 +60,7 @@ type proxyHandler struct {
 
 	cacheFilterHandler http.Handler
 	cache              *CacheProxyHandler
+	notify             func(*http.Request)
 }
 
 var _ http.Handler = &proxyHandler{}
@@ -66,6 +69,10 @@ var _ http.Handler = &proxyHandler{}
 func (h *proxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	logger := h.logger
 	req = req.WithContext(logr.NewContext(req.Context(), logger))
+
+	if h.notify != nil {
+		h.notify(req)
+	}
 
 	if h.cache == nil || !h.cache.IsCached(req) {
 		// 直连

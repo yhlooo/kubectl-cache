@@ -63,6 +63,7 @@ func NewInternalProxyCommandWithOptions(opts *options.InternalProxyOptions) *cob
 				APIProxy: proxy.APIProxyServerOptions{
 					URIPrefix: "/",
 				},
+				MaxIdleTime: opts.MaxIdleTime,
 			})
 			if err != nil {
 				return fmt.Errorf("create proxy server error: %w", err)
