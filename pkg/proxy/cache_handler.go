@@ -52,6 +52,9 @@ func NewCacheProxyHandler(
 	if err != nil {
 		return nil, err
 	}
+	if err := IndexFields(ctx, c); err != nil {
+		return nil, fmt.Errorf("index fields in cache error: %w", err)
+	}
 	go func() {
 		if err := c.Start(ctx); err != nil {
 			logger.Error(err, "run cache error")
