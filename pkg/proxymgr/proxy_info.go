@@ -2,6 +2,7 @@ package proxymgr
 
 import (
 	"fmt"
+	"os"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/registry/customresource/tableconvertor"
@@ -47,6 +48,8 @@ type ProxyStatus struct {
 	DataRoot string `json:"dataRoot,omitempty"`
 	// 运行代理的客户端配置签名
 	ClientConfigSignature string `json:"clientConfigSignature,omitempty"`
+
+	pidFile *os.File
 }
 
 // ProxyState 代理状态

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -192,15 +193,13 @@ func (mgr *defaultProxyManager) LockProxy(_ context.Context, config *rest.Config
 	if err != nil {
 		return nil, fmt.Errorf("open pid file %q for proxy error: %w", pidFilePath, err)
 	}
-	defer func() {
-		_ = pidFile.Close()
-	}()
+	proxy.Status.pidFile = pidFile
 	// 锁 pid 文件
 	if err := lockFile(pidFile); err != nil {
 		return nil, fmt.Errorf("lock pid file %q for proxy error: %w", pidFilePath, err)
 	}
 	// 写 pid
-	if _, err := pidFile.WriteString(strconv.Itoa(os.Getpid())); err != nil {
+	if _, err := pidFile.WriteString(strconv.Itoa(os.Getpid()) + "\n"); err != nil {
 		return nil, fmt.Errorf("write pid file %q for proxy error: %w", pidFilePath, err)
 	}
 
@@ -209,18 +208,14 @@ func (mgr *defaultProxyManager) LockProxy(_ context.Context, config *rest.Config
 
 // UnlockProxy 解锁当前进程认领的客户端配置对应的代理
 func (mgr *defaultProxyManager) UnlockProxy(_ context.Context, proxy *Proxy) error {
-	// 打开 pid 文件
-	pidFilePath := filepath.Join(proxy.Status.DataRoot, pidFileSubPath)
-	pidFile, err := os.OpenFile(pidFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("open pid file %q for proxy error: %w", pidFilePath, err)
+	if proxy.Status.pidFile == nil {
+		return fmt.Errorf("no pid file opened by proxy %q", proxy.Name)
 	}
 	// 解锁 pid 文件
-	if err := unlockFile(pidFile); err != nil {
-		_ = pidFile.Close()
-		return fmt.Errorf("unlock pid file %q for proxy error: %w", pidFilePath, err)
+	if err := unlockFile(proxy.Status.pidFile); err != nil {
+		return fmt.Errorf("unlock pid file %q for proxy error: %w", proxy.Status.pidFile.Name(), err)
 	}
-	_ = pidFile.Close()
+	_ = proxy.Status.pidFile.Close()
 	// 删除所有数据文件
 	if proxy.Status.DataRoot != "" && proxy.Status.ClientConfigSignature != "" &&
 		filepath.Join(mgr.dataRoot, rootSubPath, proxy.Status.ClientConfigSignature) == proxy.Status.DataRoot {
@@ -326,7 +321,7 @@ func (mgr *defaultProxyManager) getPID(proxyDataRoot string) (int, time.Time, er
 	if err != nil {
 		return 0, pidFileState.ModTime(), fmt.Errorf("read proxy pid file %q error: %w", pidFilePath, err)
 	}
-	pid, err := strconv.Atoi(string(pidStr))
+	pid, err := strconv.Atoi(strings.TrimSuffix(string(pidStr), "\n"))
 	if err != nil {
 		return 0, pidFileState.ModTime(), fmt.Errorf("invalid proxy pid %q: %w", string(pidStr), err)
 	}
