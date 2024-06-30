@@ -2,30 +2,63 @@ package proxy
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// IndexFields 设置字段索引
-func IndexFields(ctx context.Context, c cache.Cache) error {
-	if err := IndexFieldsForCoreV1Pod(ctx, c); err != nil {
+// IndexFieldsForObject 为对象设置字段索引
+func IndexFieldsForObject(ctx context.Context, c cache.Cache, obj client.Object) error {
+	// 添加 metadata 字段索引
+	if err := IndexFieldsForObjectMeta(ctx, c, obj); err != nil {
 		return err
 	}
-	if err := IndexFieldsForCoreV1Event(ctx, c); err != nil {
+
+	// 添加额外字段索引
+	switch obj.(type) {
+	case *appsv1.ReplicaSet:
+		return IndexFieldsForAppsV1ReplicaSet(ctx, c)
+	case *corev1.Event:
+		return IndexFieldsForCoreV1Event(ctx, c)
+	case *corev1.Pod:
+		return IndexFieldsForCoreV1Pod(ctx, c)
+	}
+
+	return nil
+}
+
+// IndexFieldsForObjectMeta 为任意资源添加 metadata 字段索引
+func IndexFieldsForObjectMeta(ctx context.Context, c cache.Cache, obj client.Object) error {
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.V(1).Info(fmt.Sprintf("set index field \"metadata.name\" for %T", obj))
+	if err := c.IndexField(ctx, obj, "metadata.name", getObjectNames); err != nil {
 		return err
 	}
-	if err := IndexFieldsForAppsV1ReplicaSet(ctx, c); err != nil {
+	logger.V(1).Info(fmt.Sprintf("set index field \"metadata.namespace\" for %T", obj))
+	if err := c.IndexField(ctx, obj, "metadata.namespace", getObjectNamespaces); err != nil {
 		return err
 	}
 	return nil
 }
 
+// getObjectNames 获取对象名
+func getObjectNames(obj client.Object) []string {
+	return []string{obj.GetName()}
+}
+
+// getObjectNamespaces 获取对象命名空间
+func getObjectNamespaces(obj client.Object) []string {
+	return []string{obj.GetNamespace()}
+}
+
 // IndexFieldsForCoreV1Pod 为 corev1.Pod 设置字段索引
 func IndexFieldsForCoreV1Pod(ctx context.Context, c cache.Cache) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	for _, field := range []string{
 		"spec.nodeName",
 		"spec.restartPolicy",
@@ -36,6 +69,7 @@ func IndexFieldsForCoreV1Pod(ctx context.Context, c cache.Cache) error {
 		"status.phase",
 		"status.nominatedNodeName",
 	} {
+		logger.V(1).Info(fmt.Sprintf("set index field %q for *v1.Pod", field))
 		if err := c.IndexField(ctx, &corev1.Pod{}, field, getCoreV1PodField(field)); err != nil {
 			return err
 		}
@@ -77,6 +111,7 @@ func getCoreV1PodField(field string) client.IndexerFunc {
 
 // IndexFieldsForCoreV1Event 为 corev1.Event 设置字段索引
 func IndexFieldsForCoreV1Event(ctx context.Context, c cache.Cache) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	for _, field := range []string{
 		"involvedObject.kind",
 		"involvedObject.namespace",
@@ -90,6 +125,7 @@ func IndexFieldsForCoreV1Event(ctx context.Context, c cache.Cache) error {
 		"source",
 		"type",
 	} {
+		logger.V(1).Info(fmt.Sprintf("set index field %q for *v1.Event", field))
 		if err := c.IndexField(ctx, &corev1.Event{}, field, getCoreV1EventField(field)); err != nil {
 			return err
 		}
@@ -140,6 +176,8 @@ func getCoreV1EventField(field string) client.IndexerFunc {
 
 // IndexFieldsForAppsV1ReplicaSet 为 appsv1.ReplicaSet 设置字段索引
 func IndexFieldsForAppsV1ReplicaSet(ctx context.Context, c cache.Cache) error {
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.V(1).Info("set index field \"status.replicas\" for *v1.ReplicaSet")
 	if err := c.IndexField(ctx, &appsv1.ReplicaSet{}, "status.replicas", func(obj client.Object) []string {
 		rs, ok := obj.(*appsv1.ReplicaSet)
 		if !ok || rs == nil {

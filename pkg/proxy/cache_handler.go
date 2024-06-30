@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -52,9 +53,6 @@ func NewCacheProxyHandler(
 	if err != nil {
 		return nil, err
 	}
-	if err := IndexFields(ctx, c); err != nil {
-		return nil, fmt.Errorf("index fields in cache error: %w", err)
-	}
 	go func() {
 		if err := c.Start(ctx); err != nil {
 			logger.Error(err, "run cache error")
@@ -85,6 +83,9 @@ type CacheProxyHandler struct {
 	mapper         meta.RESTMapper
 	resolver       apirequest.RequestInfoResolver
 	tableConvertor registryrest.TableConvertor
+
+	startedInformersLock sync.RWMutex
+	startedInformers     map[schema.GroupVersionResource]bool
 }
 
 var _ http.Handler = &CacheProxyHandler{}
@@ -107,6 +108,9 @@ func (h *CacheProxyHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 
 // Handle 处理请求
 func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
+	ctx := req.Context()
+	logger := logr.FromContextOrDiscard(ctx)
+
 	// 检查请求
 	info, err := h.resolver.NewRequestInfo(req)
 	if err != nil {
@@ -124,6 +128,11 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 		gvr.Resource = info.Resource + "/" + info.Subresource
 	}
 
+	// 设置 informer
+	if err := h.ensureInformer(ctx, gvr); err != nil {
+		return nil, fmt.Errorf("ensure informer for %s error: %w", gvr, err)
+	}
+
 	// 获取请求对应资源 Kind
 	gvk, err := h.mapper.KindFor(gvr)
 	if err != nil {
@@ -132,9 +141,6 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 	if info.Verb == "list" {
 		gvk.Kind += "List"
 	}
-
-	ctx := req.Context()
-	logger := logr.FromContextOrDiscard(ctx)
 
 	// 创建返回对象
 	obj, err := h.scheme.New(gvk)
@@ -262,6 +268,55 @@ func (h *CacheProxyHandler) HandleList(
 	}
 
 	return h.cache.List(ctx, obj, listOpts)
+}
+
+// ensureInformer 确保资源对应 informer 就绪
+func (h *CacheProxyHandler) ensureInformer(ctx context.Context, gvr schema.GroupVersionResource) error {
+	logger := logr.FromContextOrDiscard(ctx)
+
+	// 检查是否已经启动过对应的 informer
+	h.startedInformersLock.RLock()
+	if h.startedInformers[gvr] {
+		h.startedInformersLock.RUnlock()
+		return nil
+	}
+
+	// 换成写锁继续
+	h.startedInformersLock.RUnlock()
+	h.startedInformersLock.Lock()
+	defer h.startedInformersLock.Unlock()
+
+	// 换成写锁后再检查一遍，因为换锁过程中仍然有可能被修改
+	if h.startedInformers[gvr] {
+		return nil
+	}
+
+	gvk, err := h.mapper.KindFor(gvr)
+	if err != nil {
+		return fmt.Errorf("get kind for %s error: %w", gvr.String(), err)
+	}
+	obj, err := h.scheme.New(gvk)
+	if err == nil {
+		clientObj, ok := obj.(client.Object)
+		if ok {
+			// 为对象设置字段索引
+			if err := IndexFieldsForObject(ctx, h.cache, clientObj); err != nil {
+				return fmt.Errorf("index fields for %T error: %w", obj, err)
+			}
+		}
+	}
+	// 创建 informer 并等待缓存同步
+	logger.V(1).Info(fmt.Sprintf("waiting for informer for %s", gvk))
+	if _, err := h.cache.GetInformerForKind(ctx, gvk, cache.BlockUntilSynced(true)); err != nil {
+		return err
+	}
+
+	if h.startedInformers == nil {
+		h.startedInformers = make(map[schema.GroupVersionResource]bool)
+	}
+	h.startedInformers[gvr] = true
+
+	return nil
 }
 
 // ConvertToTable 将 obj 转换为表格形式
