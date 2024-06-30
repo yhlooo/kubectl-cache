@@ -1,66 +1,65 @@
 package proxy
 
 import (
+	apiextensionsinstall "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/install"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/runtime"
-	clientscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/kubernetes/pkg/apis/abac"
-	"k8s.io/kubernetes/pkg/apis/admission"
-	"k8s.io/kubernetes/pkg/apis/admissionregistration"
-	"k8s.io/kubernetes/pkg/apis/apidiscovery"
-	"k8s.io/kubernetes/pkg/apis/apiserverinternal"
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/kubernetes/pkg/apis/authentication"
-	"k8s.io/kubernetes/pkg/apis/authorization"
-	"k8s.io/kubernetes/pkg/apis/autoscaling"
-	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/certificates"
-	"k8s.io/kubernetes/pkg/apis/coordination"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/apis/discovery"
-	"k8s.io/kubernetes/pkg/apis/events"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/apis/flowcontrol"
-	"k8s.io/kubernetes/pkg/apis/imagepolicy"
-	"k8s.io/kubernetes/pkg/apis/networking"
-	"k8s.io/kubernetes/pkg/apis/node"
-	"k8s.io/kubernetes/pkg/apis/policy"
-	"k8s.io/kubernetes/pkg/apis/rbac"
-	"k8s.io/kubernetes/pkg/apis/resource"
-	"k8s.io/kubernetes/pkg/apis/scheduling"
-	"k8s.io/kubernetes/pkg/apis/storage"
-	"k8s.io/kubernetes/pkg/apis/storagemigration"
+	apiregistrationinstall "k8s.io/kube-aggregator/pkg/apis/apiregistration/install"
+	admissioninstall "k8s.io/kubernetes/pkg/apis/admission/install"
+	admissionregistrationinstall "k8s.io/kubernetes/pkg/apis/admissionregistration/install"
+	apiserverinternalinstall "k8s.io/kubernetes/pkg/apis/apiserverinternal/install"
+	appsinstall "k8s.io/kubernetes/pkg/apis/apps/install"
+	authenticationinstall "k8s.io/kubernetes/pkg/apis/authentication/install"
+	authorizationinstall "k8s.io/kubernetes/pkg/apis/authorization/install"
+	autoscalinginstall "k8s.io/kubernetes/pkg/apis/autoscaling/install"
+	batchinstall "k8s.io/kubernetes/pkg/apis/batch/install"
+	certificatesinstall "k8s.io/kubernetes/pkg/apis/certificates/install"
+	coordinationinstall "k8s.io/kubernetes/pkg/apis/coordination/install"
+	coreinstall "k8s.io/kubernetes/pkg/apis/core/install"
+	discoveryinstall "k8s.io/kubernetes/pkg/apis/discovery/install"
+	eventsinstall "k8s.io/kubernetes/pkg/apis/events/install"
+	extensionsinstall "k8s.io/kubernetes/pkg/apis/extensions/install"
+	flowcontrolinstall "k8s.io/kubernetes/pkg/apis/flowcontrol/install"
+	imagepolicyinstall "k8s.io/kubernetes/pkg/apis/imagepolicy/install"
+	networkinginstall "k8s.io/kubernetes/pkg/apis/networking/install"
+	nodeinstall "k8s.io/kubernetes/pkg/apis/node/install"
+	policyinstall "k8s.io/kubernetes/pkg/apis/policy/install"
+	rbacinstall "k8s.io/kubernetes/pkg/apis/rbac/install"
+	resourceinstall "k8s.io/kubernetes/pkg/apis/resource/install"
+	schedulinginstall "k8s.io/kubernetes/pkg/apis/scheduling/install"
+	storageinstall "k8s.io/kubernetes/pkg/apis/storage/install"
+	storagemigrationinstall "k8s.io/kubernetes/pkg/apis/storagemigration/install"
 )
 
 // AddKubernetesTypesToScheme 添加 Kubernetes 资源到 scheme
 func AddKubernetesTypesToScheme(scheme *runtime.Scheme) {
-	_ = clientscheme.AddToScheme(scheme)
 	_ = metainternalversion.AddToScheme(scheme)
 
-	_ = abac.AddToScheme(scheme)
-	_ = admission.AddToScheme(scheme)
-	_ = admissionregistration.AddToScheme(scheme)
-	_ = apidiscovery.AddToScheme(scheme)
-	_ = apiserverinternal.AddToScheme(scheme)
-	_ = apps.AddToScheme(scheme)
-	_ = authentication.AddToScheme(scheme)
-	_ = authorization.AddToScheme(scheme)
-	_ = autoscaling.AddToScheme(scheme)
-	_ = batch.AddToScheme(scheme)
-	_ = certificates.AddToScheme(scheme)
-	_ = coordination.AddToScheme(scheme)
-	_ = core.AddToScheme(scheme)
-	_ = discovery.AddToScheme(scheme)
-	_ = events.AddToScheme(scheme)
-	_ = extensions.AddToScheme(scheme)
-	_ = flowcontrol.AddToScheme(scheme)
-	_ = imagepolicy.AddToScheme(scheme)
-	_ = networking.AddToScheme(scheme)
-	_ = node.AddToScheme(scheme)
-	_ = policy.AddToScheme(scheme)
-	_ = rbac.AddToScheme(scheme)
-	_ = resource.AddToScheme(scheme)
-	_ = scheduling.AddToScheme(scheme)
-	_ = storage.AddToScheme(scheme)
-	_ = storagemigration.AddToScheme(scheme)
+	admissioninstall.Install(scheme)
+	admissionregistrationinstall.Install(scheme)
+	apiserverinternalinstall.Install(scheme)
+	appsinstall.Install(scheme)
+	authenticationinstall.Install(scheme)
+	authorizationinstall.Install(scheme)
+	autoscalinginstall.Install(scheme)
+	batchinstall.Install(scheme)
+	certificatesinstall.Install(scheme)
+	coordinationinstall.Install(scheme)
+	coreinstall.Install(scheme)
+	discoveryinstall.Install(scheme)
+	eventsinstall.Install(scheme)
+	extensionsinstall.Install(scheme)
+	flowcontrolinstall.Install(scheme)
+	imagepolicyinstall.Install(scheme)
+	networkinginstall.Install(scheme)
+	nodeinstall.Install(scheme)
+	policyinstall.Install(scheme)
+	rbacinstall.Install(scheme)
+	resourceinstall.Install(scheme)
+	schedulinginstall.Install(scheme)
+	storageinstall.Install(scheme)
+	storagemigrationinstall.Install(scheme)
+
+	apiextensionsinstall.Install(scheme)
+	apiregistrationinstall.Install(scheme)
 }
