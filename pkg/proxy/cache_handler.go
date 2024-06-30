@@ -121,11 +121,9 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 		Version:  info.APIVersion,
 		Resource: info.Resource,
 	}
-	if info.Subresource != "" {
-		if info.Subresource != "status" {
-			return nil, apierrors.NewMethodNotSupported(gvr.GroupResource(), info.Verb)
-		}
+	if info.Subresource != "" && info.Subresource != "status" {
 		gvr.Resource = info.Resource + "/" + info.Subresource
+		return nil, apierrors.NewMethodNotSupported(gvr.GroupResource(), info.Verb)
 	}
 
 	// 设置 informer
