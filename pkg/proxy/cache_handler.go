@@ -253,14 +253,14 @@ func (h *CacheProxyHandler) HandleList(
 	if opts.LabelSelector != "" {
 		selector, err := labels.Parse(opts.LabelSelector)
 		if err != nil {
-			return fmt.Errorf("parse label selector error: %w", err)
+			return apierrors.NewBadRequest(err.Error())
 		}
 		listOpts.LabelSelector = selector
 	}
 	if opts.FieldSelector != "" {
 		selector, err := fields.ParseSelector(opts.FieldSelector)
 		if err != nil {
-			return fmt.Errorf("parse field selector error: %w", err)
+			return apierrors.NewBadRequest(err.Error())
 		}
 		listOpts.FieldSelector = selector
 	}
@@ -358,6 +358,12 @@ func ConvertToTable(
 
 // WriteResponse 写响应
 func WriteResponse(w http.ResponseWriter, code int, obj interface{}) {
+	if status, ok := obj.(metav1.Status); ok {
+		status.APIVersion = "v1"
+		status.Kind = "Status"
+		obj = status
+	}
+
 	raw, err := json.Marshal(obj)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
