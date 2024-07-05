@@ -25,9 +25,6 @@ import (
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	registryrest "k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/printers"
-	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
-	printerstorage "k8s.io/kubernetes/pkg/printers/storage"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -62,6 +59,11 @@ func NewCacheProxyHandler(
 	apisPathPrefix := strings.Trim(strings.Trim(apiProxyPrefix, "/")+"/apis", "/")
 	legacyAPIsPathPrefix := strings.Trim(strings.Trim(apiProxyPrefix, "/")+"/api", "/")
 
+	tableConvertor, err := NewDefaultTableConvertor(config, scheme)
+	if err != nil {
+		return nil, fmt.Errorf("create table convertor error: %w", err)
+	}
+
 	return &CacheProxyHandler{
 		scheme: scheme,
 		cache:  c,
@@ -70,9 +72,7 @@ func NewCacheProxyHandler(
 			APIPrefixes:          sets.NewString(apisPathPrefix, legacyAPIsPathPrefix),
 			GrouplessAPIPrefixes: sets.NewString(legacyAPIsPathPrefix),
 		},
-		tableConvertor: printerstorage.TableConvertor{
-			TableGenerator: printers.NewTableGenerator().With(printersinternal.AddHandlers),
-		},
+		tableConvertor: tableConvertor,
 	}, nil
 }
 
@@ -183,7 +183,7 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 		// 不支持服务端表格，返回普通 json 格式
 		return obj, nil
 	}
-	table, err := ConvertToTable(ctx, h.scheme, gvk, h.tableConvertor, obj)
+	table, err := ConvertToTable(ctx, h.tableConvertor, obj)
 	if err != nil {
 		logger.V(1).Info(fmt.Sprintf("convert to table error: %v", err))
 		return obj, nil
@@ -322,22 +322,11 @@ func (h *CacheProxyHandler) ensureInformer(ctx context.Context, gvr schema.Group
 // ConvertToTable 将 obj 转换为表格形式
 func ConvertToTable(
 	ctx context.Context,
-	scheme *runtime.Scheme,
-	gvk schema.GroupVersionKind,
 	tableConvertor registryrest.TableConvertor,
 	obj runtime.Object,
 ) (*metav1.Table, error) {
-	// 转换为 __internal 版本
-	internalObj, err := scheme.New(gvk.GroupKind().WithVersion(runtime.APIVersionInternal))
-	if err != nil {
-		return nil, fmt.Errorf("new internal object for %T error: %w", obj, err)
-	}
-	if err := scheme.Convert(obj, internalObj, nil); err != nil {
-		return nil, fmt.Errorf("convert %T to internal version error: %w", obj, err)
-	}
-
 	// 转换为表格
-	table, err := tableConvertor.ConvertToTable(ctx, internalObj, nil)
+	table, err := tableConvertor.ConvertToTable(ctx, obj, nil)
 	if err != nil {
 		return nil, err
 	}
