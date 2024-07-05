@@ -294,19 +294,21 @@ func (h *CacheProxyHandler) ensureInformer(ctx context.Context, gvr schema.Group
 		return fmt.Errorf("get kind for %s error: %w", gvr.String(), err)
 	}
 	obj, err := h.scheme.New(gvk)
-	if err == nil {
-		clientObj, ok := obj.(client.Object)
-		if ok {
-			// 为对象设置字段索引
-			if err := IndexFieldsForObject(ctx, h.cache, clientObj); err != nil {
-				return fmt.Errorf("index fields for %T error: %w", obj, err)
-			}
-		}
+	if err != nil {
+		obj = &unstructured.Unstructured{}
+		obj.GetObjectKind().SetGroupVersionKind(gvk)
 	}
-	// 创建 informer 并等待缓存同步
-	logger.V(1).Info(fmt.Sprintf("waiting for informer for %s", gvk))
-	if _, err := h.cache.GetInformerForKind(ctx, gvk, cache.BlockUntilSynced(true)); err != nil {
-		return err
+
+	if clientObj, ok := obj.(client.Object); ok {
+		// 为对象设置字段索引
+		if err := IndexFieldsForObject(ctx, h.cache, clientObj); err != nil {
+			return fmt.Errorf("index fields for %T error: %w", obj, err)
+		}
+		// 创建 informer 并等待缓存同步
+		logger.V(1).Info(fmt.Sprintf("waiting for informer for %s", gvk))
+		if _, err := h.cache.GetInformer(ctx, clientObj, cache.BlockUntilSynced(true)); err != nil {
+			return err
+		}
 	}
 
 	if h.startedInformers == nil {
