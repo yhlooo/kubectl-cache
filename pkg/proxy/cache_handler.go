@@ -125,19 +125,21 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 		gvr.Resource = info.Resource + "/" + info.Subresource
 		return nil, apierrors.NewMethodNotSupported(gvr.GroupResource(), info.Verb)
 	}
+	// 获取请求对应资源 Kind
+	gvk, err := h.mapper.KindFor(gvr)
+	if err != nil || gvk.Version != gvr.Version || gvk.Group != gvr.Group {
+		return nil, &apierrors.StatusError{ErrStatus: metav1.Status{
+			Code:   http.StatusNotFound,
+			Reason: metav1.StatusReasonNotFound,
+		}}
+	}
+	if info.Verb == "list" {
+		gvk.Kind += "List"
+	}
 
 	// 设置 informer
 	if err := h.ensureInformer(ctx, gvr); err != nil {
 		return nil, fmt.Errorf("ensure informer for %s error: %w", gvr, err)
-	}
-
-	// 获取请求对应资源 Kind
-	gvk, err := h.mapper.KindFor(gvr)
-	if err != nil {
-		return nil, fmt.Errorf("get kind for %s error: %w", gvr.String(), err)
-	}
-	if info.Verb == "list" {
-		gvk.Kind += "List"
 	}
 
 	// 创建返回对象
