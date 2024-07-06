@@ -146,7 +146,11 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 	obj, err := h.scheme.New(gvk)
 	if err != nil {
 		// 无结构对象
-		obj = &unstructured.UnstructuredList{}
+		if info.Verb == "list" {
+			obj = &unstructured.UnstructuredList{}
+		} else {
+			obj = &unstructured.Unstructured{}
+		}
 	}
 	obj.GetObjectKind().SetGroupVersionKind(gvk)
 
