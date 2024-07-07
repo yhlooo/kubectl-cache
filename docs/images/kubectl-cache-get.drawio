@@ -1,0 +1,78 @@
+<mxfile host="app.diagrams.net" modified="2024-07-06T14:07:49.516Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0" etag="5t5F9H6I_3EVmIROyyn7" version="24.6.4" type="device">
+  <diagram name="第 1 页" id="w3ja1bjoayfMokqQxgQL">
+    <mxGraphModel dx="2514" dy="1437" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-5" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;flowAnimation=0;shadow=0;strokeWidth=2;strokeColor=default;" parent="1" source="nMTpdDIKNEafPvPvFg4v-1" target="nMTpdDIKNEafPvPvFg4v-3" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="377.5" y="490" as="sourcePoint" />
+            <mxPoint x="350" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-7" value="1. get or start proxy" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;" parent="nMTpdDIKNEafPvPvFg4v-5" vertex="1" connectable="0">
+          <mxGeometry x="-0.2604" y="-5" relative="1" as="geometry">
+            <mxPoint x="-35" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-1" value="kubectl-cache get" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;" parent="1" vertex="1">
+          <mxGeometry x="312.5" y="420" width="145" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;" parent="1" source="nMTpdDIKNEafPvPvFg4v-2" target="nMTpdDIKNEafPvPvFg4v-1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-12" value="kubectl cache get pod -A" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;" parent="nMTpdDIKNEafPvPvFg4v-4" vertex="1" connectable="0">
+          <mxGeometry x="-0.16" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-2" value="User" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;" parent="1" vertex="1">
+          <mxGeometry x="347.5" y="310" width="75" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-10" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;fillColor=#dae8fc;strokeColor=#3399FF;" parent="1" source="nMTpdDIKNEafPvPvFg4v-14" target="nMTpdDIKNEafPvPvFg4v-9" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-11" value="HTTP GET /api/v1/pods?watch=true" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;fontColor=#3399FF;" parent="nMTpdDIKNEafPvPvFg4v-10" vertex="1" connectable="0">
+          <mxGeometry x="0.2714" y="3" relative="1" as="geometry">
+            <mxPoint x="-3" y="-7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;fontColor=#3399FF;strokeColor=#3399FF;" parent="1" vertex="1">
+          <mxGeometry x="190" y="560" width="270" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-6" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;strokeWidth=2;" parent="1" source="nMTpdDIKNEafPvPvFg4v-1" target="nMTpdDIKNEafPvPvFg4v-13" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="345" y="490" as="sourcePoint" />
+            <mxPoint x="345" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-8" value="2. HTTP GET /api/v1/pods" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;" parent="nMTpdDIKNEafPvPvFg4v-6" vertex="1" connectable="0">
+          <mxGeometry x="0.298" y="-1" relative="1" as="geometry">
+            <mxPoint x="66" y="-28" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-9" value="Kubernetes APIServer" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;" parent="1" vertex="1">
+          <mxGeometry x="140" y="750" width="195" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;fontColor=#66B2FF;strokeColor=#3399FF;" parent="1" source="nMTpdDIKNEafPvPvFg4v-13" target="nMTpdDIKNEafPvPvFg4v-14" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-13" value="HTTP Server" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fontColor=#3399FF;strokeColor=#3399FF;" parent="1" vertex="1">
+          <mxGeometry x="340" y="600" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-14" value="Informers" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fontColor=#3399FF;strokeColor=#3399FF;" parent="1" vertex="1">
+          <mxGeometry x="220" y="600" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-15" value="kubectl-cache internal-proxy" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#3399FF;" parent="1" vertex="1">
+          <mxGeometry x="192" y="560" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-17" value="&lt;span style=&quot;font-family: Roboto, RobotoDraft, Helvetica, Arial, sans-serif; font-size: 16px; text-align: start; white-space-collapse: preserve;&quot;&gt;(keep running in the background)&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fillColor=none;fontColor=#3399FF;labelBackgroundColor=none;textOpacity=80;" parent="1" vertex="1">
+          <mxGeometry x="464" y="600" width="172.5" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="nMTpdDIKNEafPvPvFg4v-18" value="&lt;span style=&quot;font-family: Roboto, RobotoDraft, Helvetica, Arial, sans-serif; font-size: 16px; text-align: start; white-space-collapse: preserve;&quot;&gt;(run in forground)&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fillColor=none;fontColor=default;labelBackgroundColor=none;textOpacity=70;" parent="1" vertex="1">
+          <mxGeometry x="464" y="435" width="140" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

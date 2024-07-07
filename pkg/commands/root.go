@@ -34,7 +34,7 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 		Annotations: map[string]string{
 			cobra.CommandDisplayNameAnnotation: displayName,
 		},
-		Short:        "Get or List Kubernetes resources with local cache",
+		Short:        "Get or list Kubernetes resources with local cache",
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// 校验全局选项
