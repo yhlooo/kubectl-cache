@@ -2,8 +2,13 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
+
+	// 注册认证插件
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/yhlooo/kubectl-cache/pkg/commands/options"
 	"github.com/yhlooo/kubectl-cache/pkg/utils/cmdutil"
@@ -16,8 +21,19 @@ func NewRootCommand() *cobra.Command {
 
 // NewRootCommandWithOptions 基于选项创建一个 kubectl-cache 命令
 func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
+	displayName := "kubectl-cache"
+	if lastArg := os.Getenv("_"); lastArg != "" {
+		switch filepath.Base(lastArg) {
+		case "kubectl", "kubectl.exe":
+			// 当前是以 kubectl 插件方式运行的
+			displayName = "kubectl cache"
+		}
+	}
 	cmd := &cobra.Command{
-		Use:          "kubectl-cache",
+		Use: displayName,
+		Annotations: map[string]string{
+			cobra.CommandDisplayNameAnnotation: displayName,
+		},
 		Short:        "Get or List Kubernetes resources with local cache",
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
