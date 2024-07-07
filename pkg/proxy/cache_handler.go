@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -178,6 +179,9 @@ func (h *CacheProxyHandler) Handle(req *http.Request) (runtime.Object, error) {
 		}
 		if err := h.HandleList(ctx, ret, info.Namespace, opts); err != nil {
 			return nil, err
+		}
+		if err := sortObjectsByNamespaceName(obj); err != nil {
+			logger.Info("WARNING sort objects by namespace and name error: %v", err)
 		}
 	default:
 		return nil, apierrors.NewMethodNotSupported(gvr.GroupResource(), info.Verb)
@@ -439,4 +443,30 @@ func ToPartial(obj runtime.Object) (runtime.Object, bool) {
 		}, true
 	}
 	return nil, false
+}
+
+// sortObjectsByNamespaceName 将列表对象元素按命名空间和名升序排序
+func sortObjectsByNamespaceName(listObj runtime.Object) error {
+	if !meta.IsListType(listObj) {
+		return fmt.Errorf("%T is not a list type", listObj)
+	}
+	objs, err := meta.ExtractList(listObj)
+	if err != nil {
+		return fmt.Errorf("extract list from %T error: %w", listObj, err)
+	}
+	if len(objs) == 0 {
+		return nil
+	}
+	if _, ok := objs[0].(metav1.Object); !ok {
+		return fmt.Errorf("%T is not has metadata field", listObj)
+	}
+	sort.Slice(objs, func(i, j int) bool {
+		objMetaI := objs[i].(metav1.Object)
+		objMetaJ := objs[j].(metav1.Object)
+		if objNSI, objNSJ := objMetaI.GetNamespace(), objMetaJ.GetNamespace(); objNSI != objNSJ {
+			return objNSI < objNSJ
+		}
+		return objMetaI.GetName() < objMetaJ.GetName()
+	})
+	return meta.SetList(listObj, objs)
 }
