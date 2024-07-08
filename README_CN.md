@@ -16,7 +16,13 @@
 
 ## 示例
 
-TODO: ...
+用法与 `kubectl get ...` 几乎完全一致：
+
+![demo](docs/images/demo.gif)
+
+与 `kubectl get ...` 响应速度的比较： 
+
+![compare-with-get](docs/images/compare-with-get.gif)
 
 ## 原理
 
@@ -41,7 +47,7 @@ TODO: ...
 [Krew](https://krew.sigs.k8s.io/) 是一个 kubectl 的插件管理工具，如果你已经安装了 Krew ，可执行以下命令安装 `kubectl-cache` ：
 
 ```bash
-kubectl krew install --manifest-url https://raw.githubusercontent.com/yhlooo/kubectl-cache/master/cache.krew.yaml
+kubectl krew install cache
 ```
 
 ### 通过二进制安装
@@ -111,3 +117,11 @@ kubectl --server http://127.0.0.1:8001 get pod
 `kubectl cache proxy` 命令与 `kubectl proxy` 用法几乎完全一致，仅仅在 `proxy` 前加一个 `cache` 。
 
 更多参数和用法参考 `kubectl cache proxy --help` 。
+
+## 已知问题
+
+- [字段选择器（ Field Selector ）](https://kubernetes.io/zh-cn/docs/concepts/overview/working-with-objects/field-selectors/) 中仅支持 `=` 和 `==` 操作符，不支持 `!=`
+- 对于 [定制资源（ Custom Resource ）](https://kubernetes.io/zh-cn/docs/concepts/extend-kubernetes/api-extension/custom-resources/) ，字段选择器中仅支持 `metadata.name` 和 `metadata.namespace` 字段，即使是使用 [聚合 API （ Aggregated API ）](https://kubernetes.io/zh-cn/docs/concepts/extend-kubernetes/api-extension/custom-resources/#api-server-aggregation) 方式实现的定制资源
+- 对于使用聚合 API 方式实现的定制资源，以默认表格格式打印时仅有 `Name` （ `metadata.name` ）和 `Age` （ `metadata.creationTimestamp` ）列
+- 以默认表格格式打印 [APIService](https://kubernetes.io/zh-cn/docs/reference/kubernetes-api/cluster-resources/api-service-v1/) 和 [CustomResourceDefinition](https://kubernetes.io/zh-cn/docs/reference/kubernetes-api/extend-resources/custom-resource-definition-v1/) 资源时仅有 `Name` （ `metadata.name` ）和 `Age` （ `metadata.creationTimestamp` ）列
+- list 接口中 `limit` 、 `continue` 、 `resourceVersion` 参数不能发挥作用

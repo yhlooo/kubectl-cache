@@ -6,9 +6,9 @@
 
 # kubectl-cache
 
-`kubectl-cache` is a plugin for [kubectl](https://kubernetes.io/docs/reference/kubectl/) (the [Kubernetes](https://kubernetes.io) CLI client) used to get or list Kubernetes resources from local cache.
+`kubectl-cache` is a plugin for [kubectl](https://kubernetes.io/docs/reference/kubectl/) (the [Kubernetes](https://kubernetes.io) CLI client) used to get or list Kubernetes resources with local cache.
 
-Traditionally, `kubectl get ...` get or lists Kubernetes resources by calling the Kubernetes APIServer's **get** or **list** endpoints. However, the **list** endpoint can be inefficient when dealing with a large number of objects. Frequent **list** calls can stress the APIServer and its storage backend (etcd), potentially affecting APIServer stability.
+Traditionally, `kubectl get ...` get or list Kubernetes resources by sending a **get** or **list** request to the Kubernetes APIServer. However, processing **list** requests can be inefficient when there are a large number of objects. Frequent **list** requests can stress the APIServer and its storage backend (etcd), potentially affecting APIServer stability.
 
 A common solution to this problem is to build a local cache of resources that need to be queried and detect changes in the cluster using the **watch** interface (to update the cache), as described in [Efficient detection of changes](https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes). Kubernetes' Go client library, [k8s.io/client-go](https://pkg.go.dev/k8s.io/client-go), includes tools such as Informers ([k8s.io/client-go/informers](https://pkg.go.dev/k8s.io/client-go/informers)), which implement this access pattern.
 
@@ -18,7 +18,13 @@ The answer is `kubectl-cache`, which provides a way to use Informers with `kubec
 
 ## Examples
 
-TODO: ...
+The usage is almost the same as `kubectl get ...`:
+
+![demo](docs/images/demo.gif)
+
+Comparison with `kubectl get ...` response speed:
+
+![compare-with-get](docs/images/compare-with-get.gif)
 
 ## How It Works
 
@@ -43,7 +49,7 @@ For read requests (get and list), the proxy queries and returns results from the
 [Krew](https://krew.sigs.k8s.io/) is a plugin manager for `kubectl`. If you have Krew installed, you can install `kubectl-cache` with the following command:
 
 ```bash
-kubectl krew install --manifest-url https://raw.githubusercontent.com/yhlooo/kubectl-cache/master/cache.krew.yaml
+kubectl krew install cache
 ```
 
 ### Binaries
@@ -113,3 +119,11 @@ kubectl --server http://127.0.0.1:8001 get pod
 The `kubectl cache proxy` command behaves almost identically to `kubectl proxy`, with `cache` added before `proxy`.
 
 For more options and usage, refer to `kubectl cache proxy --help`.
+
+## Known Issues
+
+- The [Field Selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/) only supports the `=` and `==` operators; the `!=` operator is not supported
+- For [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), the field selector only supports the `metadata.name` and `metadata.namespace` fields, even when implemented using the [Aggregated API](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#api-server-aggregation)
+- When printing custom resources implemented using the Aggregated API in the default table format, only the `Name` (`metadata.name`) and `Age` (`metadata.creationTimestamp`) columns are available
+- When printing [APIService](https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/api-service-v1/) and [CustomResourceDefinition](https://kubernetes.io/docs/reference/kubernetes-api/extend-resources/custom-resource-definition-v1/) resources in the default table format, only the `Name` (`metadata.name`) and `Age` (`metadata.creationTimestamp`) columns are available
+- In the **list** API, the `limit`, `continue` and `resourceVersion` queries do not work
