@@ -3,6 +3,7 @@ package proxyclientgetter
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-logr/logr"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -18,6 +19,8 @@ type ProxyClientGetter struct {
 	ProxyManager proxymgr.ProxyManager
 
 	ctx context.Context
+
+	logProxyAddrOnce sync.Once
 }
 
 var _ genericclioptions.RESTClientGetter = &ProxyClientGetter{}
@@ -52,6 +55,8 @@ func (getter *ProxyClientGetter) ToRESTConfig() (*rest.Config, error) {
 		}
 	}
 
-	logger.Info(fmt.Sprintf("using proxy http://127.0.0.1:%d", proxy.Status.Port))
+	getter.logProxyAddrOnce.Do(func() {
+		logger.Info(fmt.Sprintf("using proxy http://127.0.0.1:%d", proxy.Status.Port))
+	})
 	return proxy.ToClientConfig(), nil
 }
