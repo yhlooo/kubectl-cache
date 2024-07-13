@@ -60,6 +60,7 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 	// 添加子命令
 	cmd.AddCommand(
 		NewGetCommand(opts.Global.ClientConfig),
+		NewDescribeCommand(opts.Global.ClientConfig),
 		NewProxyCommandWithOptions(&opts.Proxy),
 		NewProxiesCommandWithOptions(&opts.Proxies),
 		NewShutdownCommandWithOptions(&opts.Shutdown),
