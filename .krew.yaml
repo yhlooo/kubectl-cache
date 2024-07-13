@@ -16,35 +16,35 @@ spec:
         matchLabels:
           os: linux
           arch: amd64
-      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-linux-amd64.tar.gz" .TagName }}
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-linux-amd64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-cache
     - selector:
         matchLabels:
           os: linux
           arch: arm64
-      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-linux-arm64.tar.gz" .TagName }}
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-linux-arm64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-cache
     - selector:
         matchLabels:
           os: darwin
           arch: amd64
-      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-darwin-amd64.tar.gz" .TagName }}
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-darwin-amd64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-cache
     - selector:
         matchLabels:
           os: darwin
           arch: arm64
-      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-darwin-arm64.tar.gz" .TagName }}
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-darwin-arm64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-cache
     - selector:
         matchLabels:
           os: windows
           arch: amd64
-      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-windows-amd64.tar.gz" .TagName }}
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-windows-amd64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-cache.exe
     - selector:
         matchLabels:
           os: windows
           arch: arm64
-      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-windows-arm64.tar.gz" .TagName }}
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-windows-arm64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-cache.exe
