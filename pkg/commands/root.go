@@ -63,6 +63,7 @@ func NewRootCommandWithOptions(opts options.Options) *cobra.Command {
 		NewProxyCommandWithOptions(&opts.Proxy),
 		NewProxiesCommandWithOptions(&opts.Proxies),
 		NewShutdownCommandWithOptions(&opts.Shutdown),
+		NewVersionCommandWithOptions(&opts.Version),
 		NewInternalProxyCommandWithOptions(&opts.InternalProxyOptions),
 	)
 

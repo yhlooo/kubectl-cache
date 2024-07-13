@@ -10,10 +10,10 @@ import (
 	"github.com/yhlooo/kubectl-cache/pkg/proxymgr"
 )
 
-// NewShutdownCommandWithOptions 使用指定选项创建
+// NewShutdownCommandWithOptions 使用指定选项创建 shutdown 子命令
 func NewShutdownCommandWithOptions(opts *options.ShutdownOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "shutdown [NAME]",
+		Use:   "shutdown [NAME...]",
 		Short: "Shutdown the cache proxy",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
