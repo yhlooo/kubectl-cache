@@ -7,10 +7,10 @@ spec:
   homepage: "https://github.com/yhlooo/kubectl-cache"
   shortDescription: "Get or list Kubernetes resources with local cache"
   description: |
-    This plugin provides the `get` and `proxy` subcommands, similar to `kubectl get`
-    and `kubectl proxy`. However, getting or listing Kubernetes resources using this
-    plugin is implemented through local cache, which can reduce the pressure on
-    Kubernetes APIServer and etcd and improve response speed.
+    This plugin provides the `get`, `describe` and `proxy` subcommands, similar to
+    `kubectl get/describe/proxy ...`. However, getting or listing Kubernetes
+    resources using this plugin is implemented through local cache, which can reduce
+    the pressure on Kubernetes APIServer and etcd and improve response speed.
   platforms:
     - selector:
         matchLabels:
