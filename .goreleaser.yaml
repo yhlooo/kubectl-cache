@@ -4,10 +4,10 @@
 version: 1
 
 builds:
-  - main: ./cmd/kubectl-cache
-    binary: kubectl-cache
+  - binary: kubectl-cache
+    main: "./cmd/kubectl-cache"
     env:
-      - CGO_ENABLED=0
+      - "CGO_ENABLED=0"
     goos:
       - linux
       - darwin
@@ -16,16 +16,11 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -X main.Version={{ .Version }}
+      - "-X main.Version={{ .Version }}"
 
 archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .Binary }}-
-      {{- .Version }}-
-      {{- .Os }}-
-      {{- .Arch }}
+  - format: "tar.gz"
+    name_template: "{{ .Binary }}-v{{- .Version }}-{{- .Os }}-{{- .Arch }}"
 
 changelog:
   sort: asc

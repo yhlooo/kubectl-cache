@@ -1,0 +1,50 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: cache
+spec:
+  version: "{{ .TagName }}"
+  homepage: "https://github.com/yhlooo/kubectl-cache"
+  shortDescription: "Get or list Kubernetes resources with local cache"
+  description: |
+    This plugin provides the `get` and `proxy` subcommands, similar to `kubectl get`
+    and `kubectl proxy`. However, getting or listing Kubernetes resources using this
+    plugin is implemented through local cache, which can reduce the pressure on
+    Kubernetes APIServer and etcd and improve response speed.
+  platforms:
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-linux-amd64.tar.gz" .TagName }}
+      bin: kubectl-cache
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-linux-arm64.tar.gz" .TagName }}
+      bin: kubectl-cache
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-darwin-amd64.tar.gz" .TagName }}
+      bin: kubectl-cache
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-darwin-arm64.tar.gz" .TagName }}
+      bin: kubectl-cache
+    - selector:
+        matchLabels:
+          os: windows
+          arch: amd64
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-windows-amd64.tar.gz" .TagName }}
+      bin: kubectl-cache.exe
+    - selector:
+        matchLabels:
+          os: windows
+          arch: arm64
+      {{ addURIAndSha "https://github.com/yhlooo/kubectl-cache/releases/download/{{ .TagName }}/kubectl-cache-{{ .TagName }}-windows-arm64.tar.gz" .TagName }}
+      bin: kubectl-cache.exe
