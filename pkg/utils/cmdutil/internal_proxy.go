@@ -20,12 +20,18 @@ type NewKubectlCommandFunc func(
 	streams genericiooptions.IOStreams,
 ) *cobra.Command
 
+// NewValidArgsFunc 生成 cobra.Command.ValidArgsFunction 方法
+type NewValidArgsFunc func(
+	f kubectlcmdutil.Factory,
+) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+
 // NewKubectlCommandWithInternalProxy 创建使用缓存代理的 kubectl 命令
 func NewKubectlCommandWithInternalProxy(
 	clientGetter genericclioptions.RESTClientGetter,
 	parent string,
 	newCmd NewKubectlCommandFunc,
-) (kubectlcmdutil.Factory, *cobra.Command) {
+	newValidArgsFunc NewValidArgsFunc,
+) *cobra.Command {
 	proxyClientGetter := &proxyclientgetter.ProxyClientGetter{
 		RESTClientGetter: clientGetter,
 	}
@@ -58,7 +64,29 @@ func NewKubectlCommandWithInternalProxy(
 		return nil
 	}
 
-	return f, cmd
+	// 修改 ValidArgsFunction 方法
+	if newValidArgsFunc != nil {
+		validArgsFunction := newValidArgsFunc(f)
+		cmd.ValidArgsFunction = func(
+			cmd *cobra.Command,
+			args []string,
+			toComplete string,
+		) ([]string, cobra.ShellCompDirective) {
+			ctx := cmd.Context()
+			globalOpts := options.GlobalOptionsFromContext(ctx)
+
+			// 注入上下文和代理管理器
+			proxyClientGetter.SetContext(ctx)
+			proxyClientGetter.ProxyManager = proxymgr.NewProxyManager(
+				globalOpts.DataRoot,
+				GetStartInternalProxyArgs(cmd),
+			)
+
+			return validArgsFunction(cmd, args, toComplete)
+		}
+	}
+
+	return cmd
 }
 
 // GetStartInternalProxyArgs 获取启动代理服务的命令行参数
