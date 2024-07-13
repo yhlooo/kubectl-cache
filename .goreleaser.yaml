@@ -16,7 +16,8 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - "-X main.Version={{ .Version }}"
+      - "-X github.com/yhlooo/kubectl-cache/pkg/version.version={{ .Version }}"
+      - "-w"
 
 archives:
   - format: "tar.gz"

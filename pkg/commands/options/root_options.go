@@ -7,6 +7,7 @@ func NewDefaultOptions() Options {
 		Proxy:                NewDefaultProxyOptions(),
 		Proxies:              NewDefaultProxiesOptions(),
 		Shutdown:             NewDefaultShutdownOptions(),
+		Version:              NewDefaultVersionOptions(),
 		InternalProxyOptions: NewDefaultInternalProxyOptions(),
 	}
 }
@@ -21,6 +22,8 @@ type Options struct {
 	Proxies ProxiesOptions
 	// shutdown 子命令选项
 	Shutdown ShutdownOptions
+	// version 子命令选项
+	Version VersionOptions
 
 	// internal-proxy 子命令选项
 	InternalProxyOptions InternalProxyOptions
