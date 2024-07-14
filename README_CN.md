@@ -2,6 +2,10 @@
 
 ---
 
+![GitHub License](https://img.shields.io/github/license/yhlooo/kubectl-cache)
+[![GitHub Release](https://img.shields.io/github/v/release/yhlooo/kubectl-cache)](https://github.com/yhlooo/kubectl-cache/releases/latest)
+[![release](https://github.com/yhlooo/kubectl-cache/actions/workflows/release.yaml/badge.svg)](https://github.com/yhlooo/kubectl-cache/actions/workflows/release.yaml)
+
 # kubectl-cache
 
 `kubectl-cache` 是 [kubectl](https://kubernetes.io/zh-cn/docs/reference/kubectl/) （一个 [Kubernetes](https://kubernetes.io) CLI 客户端）的插件。用于通过本地缓存获取或列出 Kubernetes 资源。

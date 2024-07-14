@@ -4,6 +4,10 @@
 
 ---
 
+![GitHub License](https://img.shields.io/github/license/yhlooo/kubectl-cache)
+[![GitHub Release](https://img.shields.io/github/v/release/yhlooo/kubectl-cache)](https://github.com/yhlooo/kubectl-cache/releases/latest)
+[![release](https://github.com/yhlooo/kubectl-cache/actions/workflows/release.yaml/badge.svg)](https://github.com/yhlooo/kubectl-cache/actions/workflows/release.yaml)
+
 # kubectl-cache
 
 `kubectl-cache` is a plugin for [kubectl](https://kubernetes.io/docs/reference/kubectl/) (the [Kubernetes](https://kubernetes.io) CLI client) used to get or list Kubernetes resources with local cache.
